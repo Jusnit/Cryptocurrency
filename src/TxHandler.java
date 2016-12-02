@@ -106,10 +106,10 @@ public class TxHandler {
     	
     	
     	//add unspent output to the utxopool
-    	for(int i = 0 ;i < tx.numOutputs();i++){
-			UTXO utx = new UTXO(tx.getHash(),i);
-			utxopool.addUTXO(utx, tx.getOutput(i));
-    	}
+//    	for(int i = 0 ;i < tx.numOutputs();i++){
+//			UTXO utx = new UTXO(tx.getHash(),i);
+//			utxopool.addUTXO(utx, tx.getOutput(i));
+//    	}
     	
     	//remove spent output
 //    	for(int i = 0;i < tx.numInputs();i++){
@@ -133,6 +133,16 @@ public class TxHandler {
     	int count = 0;
     	for(Transaction t : txAL){
     		copytxs[count++] = t;
+    		for(int i = 0 ;i < t.numOutputs();i++){
+    			UTXO utx = new UTXO(t.getHash(),i);
+    			utxopool.addUTXO(utx, t.getOutput(i));
+        	}
+    		//remove spent output
+        	for(int i = 0;i < t.numInputs();i++){
+        		UTXO utx = new UTXO(t.getInput(i).prevTxHash,t.getInput(i).outputIndex);
+        		utxopool.removeUTXO(utx);
+        	}
+    		
     	}
     	return copytxs;
     	
