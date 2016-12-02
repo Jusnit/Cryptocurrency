@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.Arrays;
 
 public class TxHandler {
@@ -23,6 +24,27 @@ public class TxHandler {
     	*/
     	
     	//(1)
+    	for(int i = 0;i < tx.numInputs();i++){
+    		UTXO utx = new UTXO(tx.getInput(i).prevTxHash,tx.getInput(i).outputIndex);
+    		if(!utxopool.contains(utx)){
+    			return false;
+    		}
+    	}
+    	
+//    	for(int i = 0 ;i < tx.numOutputs();i++){
+//    		UTXO utx = new UTXO(tx.getHash(),i);
+//    		utxopool.addUTXO(utx, tx.getOutputs().get(i));
+//    	}
+//    	
+//    	for(int i = 0 ;i < tx.numOutputs();i++){
+//    		UTXO utx = new UTXO(tx.getHash(),i);
+//
+//    		if(!utxopool.contains(utx)){
+//    			return false;
+//    		}
+//    	}
+    	
+    	
 //    	
 //    	for(Transaction.Output output : tx.getOutputs()){
 //    		for(UTXO ut : utxopool.getAllUTXO()){
@@ -35,11 +57,19 @@ public class TxHandler {
 //    	}
     	
     	//(2)
-//    	for(int i = 0;i < tx.numInputs();i++){
-//    		if(!Crypto.verifySignature(tx.getOutputs().get(i).address, tx.getRawDataToSign(i), tx.getInputs().get(i).signature)){
-//    			return false;
-//    		}
-//    	}
+    	for(int i = 0;i < tx.numInputs();i++){
+    		UTXO ut = new UTXO(tx.getInput(i).prevTxHash,tx.getInput(i).outputIndex);
+    		if(utxopool.getTxOutput(ut)!= null){
+				 System.out.println("verifying signature");
+				if (!Crypto.verifySignature(utxopool.getTxOutput(ut).address,
+						tx.getRawDataToSign(i), tx.getInput(i).signature)) {
+					 System.out.println("bad signature");
+					return false;
+
+				}
+    		}
+    		
+    	}
     	
 //    	for(int i = 0;i < tx.numInputs();i++){
 //    		for(int j = i+1;j < tx.numInputs();j++){
@@ -51,40 +81,59 @@ public class TxHandler {
 //    		}
 //    	}
 //    	
-//    	for(Transaction.Output output : tx.getOutputs()){
-//    		if(output.value < 0){
-//    			return false;
-//    		}
-//    	}
+    	//(4)
+    	for(Transaction.Output output : tx.getOutputs()){
+    		if(output.value < 0){
+    			return false;
+    		}
+    	}
 //    	
-//    	int input_sum = 0;
-//    	int output_sum = 0;
-//    	for(Transaction.Input in: tx.getInputs()){
-//    		for(UTXO ut : utxopool.getAllUTXO()){
-//        		if(ut.getTxHash() == in.prevTxHash){
-//        			input_sum += utxopool.getTxOutput(ut).value;
-//        			break;
-//        		}
-//        	}
+    	//(5)
+    	int input_sum = 0;
+    	int output_sum = 0;
+    	boolean has_input = false;
+    	for(Transaction.Input in: tx.getInputs()){
+    		has_input = true;
+    		UTXO utx = new UTXO(in.prevTxHash,in.outputIndex);
+    		if(utxopool.getTxOutput(utx) != null)
+    			input_sum += (utxopool.getTxOutput(utx)).value;
+		}
+    	for(Transaction.Output out : tx.getOutputs()){
+    		output_sum+=out.value;
+    	}
+    	if(has_input && input_sum < output_sum)
+    		return false;
+    	
+    	
+    	//add unspent output to the utxopool
+    	for(int i = 0 ;i < tx.numOutputs();i++){
+			UTXO utx = new UTXO(tx.getHash(),i);
+			utxopool.addUTXO(utx, tx.getOutput(i));
+    	}
+    	
+    	//remove spent output
+//    	for(int i = 0;i < tx.numInputs();i++){
+//    		UTXO utx = new UTXO(tx.getInput(i).prevTxHash,tx.getInput(i).outputIndex);
+//    		utxopool.removeUTXO(utx);
 //    	}
-//    	for(Transaction.Output out : tx.getOutputs()){
-//    		output_sum+=out.value;
-//    	}
-//    	if(input_sum < output_sum)
-//    		return false;
-//    	
+    	
     	return true;
     	
     }
 
     public Transaction[] handleTxs(Transaction[] possibleTxs) {
-    	Transaction[] copytxs = Arrays.copyOf(possibleTxs, possibleTxs.length);
-    	for(int i = 0;i < copytxs.length;i++){
-    		if(!isValidTx(copytxs[i])){
-    			copytxs[i] = null;
+    	Transaction[] copytxs;
+    	ArrayList<Transaction> txAL = new ArrayList();
+    	for(int i = 0;i < possibleTxs.length;i++){
+    		if(isValidTx(possibleTxs[i])){
+    			txAL.add(possibleTxs[i]);
     		}
     	}
-    	
+    	copytxs = new Transaction[txAL.size()];
+    	int count = 0;
+    	for(Transaction t : txAL){
+    		copytxs[count++] = t;
+    	}
     	return copytxs;
     	
     }
